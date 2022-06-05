@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+작성자 : 차은채 
+기능 : BoardMapper에서 요청한 데이터베이스 관련 처리를 해주는 mapper 
+-->
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<!-- BoardMapper와 연결해주기 위해 namespace를 지정해주었다. -->
+<mapper namespace="com.thehandsome.mapper.BoardMapper">
+
+<sql id="criteria">
+ <trim prefix="(" suffix=") AND " prefixOverrides="OR">
+ 	<foreach item="type" collection="typeArr">
+ 		<trim prefix="OR">
+ 			<choose>
+ 				<when test="type== 'T'.toString()">
+ 					title like '%' ||  #{keyword} ||  '%' 				
+ 				</when>
+ 				<when test="type== 'C'.toString()">
+ 					qcontent like '%' ||  #{keyword} ||  '%' 
+ 				</when>
+ 				<when test="type== 'W'.toString()">
+ 					writerid like '%' ||  #{keyword} ||  '%' 
+ 				</when> 			
+ 			</choose> <!-- end choose --> 
+ 		</trim><!--end trim OR  -->
+ 	</foreach> <!--foreach  -->
+ </trim> <!--end trim pre...  -->
+  </sql>
+
+	<!-- 페이징 처리에 필요한 게시글 전체 수 -->
+	<select id="getTotalCount" resultType="int">
+		select count(*) from BOARD where 
+		<include refid="criteria"> </include>
+		postno > 0
+	</select>
+	
+	<!-- 글 목록 (페이지 정보를 가지고 계산을 해주었고, index를 사용하여 자동 정렬이 되도록 만들어주었다.) -->
+	<!-- <select id="getListWithPaging" resultType="com.thehandsome.domain.BoardVO">
+  <![CDATA[
+  select postno, title, qcontent, writerid, writedate
+	from (
+	  select
+	  /*+ INDEX_DESC(board SYS_C0022521)*/
+	  rownum rn, postno, title, qcontent, writerid, writedate
+	  from BOARD
+	  where rownum <= #{pageNum} * #{amount}
+	  )
+	where rn > ( #{pageNum} - 1 ) *  #{amount}  
+   ]]>
+	</select> -->
+	
+	<select id="getListWithPaging" resultType="com.thehandsome.domain.BoardVO" >
+  <![CDATA[
+  select postno, title, qcontent, writerid, writedate
+	from (
+	  select
+	  /*+ INDEX_DESC(board SYS_C0022521)*/
+	  rownum rn, postno, title, qcontent, writerid, writedate
+	  from BOARD
+	  where
+	   ]]>
+ <trim prefix="(" suffix=") AND " prefixOverrides="OR">
+ 	<foreach item="type" collection="typeArr">
+ 		<trim prefix="OR">
+ 			<choose>
+ 				<when test="type== 'T'.toString()">
+ 					title like '%' ||  #{keyword} ||  '%' 				
+ 				</when>
+ 				<when test="type== 'C'.toString()">
+ 					qcontent like '%' ||  #{keyword} ||  '%' 
+ 				</when>
+ 				<when test="type== 'W'.toString()">
+ 					writerid like '%' ||  #{keyword} ||  '%' 
+ 				</when> 			
+ 			</choose> <!-- end choose --> 
+ 		</trim><!--end trim OR  -->
+ 	</foreach> <!--foreach  -->
+ </trim> <!--end trim pre...  -->
+  
+  <![CDATA[
+  rownum <= #{pageNum} * #{amount}
+  )
+where rn > ( #{pageNum} - 1 ) *  #{amount}  
+  
+  ]]>
+ </select>
+	
+
+	<!-- 글 목록(페이징 처리에 필요한 정보를 담고 있지 않음) -->
+	<!-- <select id="getList" resultType="com.thehandsome.domain.BoardVO">
+ <![CDATA[
+ select * from BOARD order by postno desc
+  ]]>
+	</select> -->
+
+	<!-- 글 작성 -->	
+	<insert id="insert">
+		insert into board (writerid, title, qcontent, acontent, writedate, postno)
+		values (#{writerid}, #{title}, #{qcontent}, #{acontent}, sysdate,
+		sequence_board.NEXTVAL)
+	</insert>
+
+	<!-- 글 하나 상세 -->
+	<select id="read" resultType="com.thehandsome.domain.BoardVO">
+		select postno, writerid, title, qcontent, acontent, writedate from board
+		where postno = #{postno}
+	</select>
+	
+	<!-- 글 삭제 -->
+	<delete id="delete">
+		delete from board where postno = #{postno}
+	</delete>
+	
+	<!-- 글 수정 -->
+	<update id="update">
+		update board
+		set title= #{title}, qcontent=#{qcontent}, acontent=#{acontent}
+		where postno = #{postno}
+	</update>
+
+</mapper> 
+ 

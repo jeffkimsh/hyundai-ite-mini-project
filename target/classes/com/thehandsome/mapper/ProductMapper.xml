@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+작성자 : 김승환
+기능 : ProductMapper에서 요청한 데이터베이스 관련 처리를 해주는 mapper 
+-->
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- ProductMapper와 연결해주기 위해 namespace를 지정해주었다. -->
+<mapper namespace="com.thehandsome.mapper.ProductMapper">
+	<!-- 상품 리스트 조회 (페이징 처리) -->
+   <select id="getList" resultType="com.thehandsome.domain.ProductListVO">
+    <![CDATA[
+       select PCODE, IMGURL1, COLORURL, PNAME, PPRICE, PBRAND, PCOLOR
+       from
+          (
+             select pno, PCODE, IMGURL1, COLORURL, PNAME, PPRICE, PBRAND, PCOLOR
+             from productImg natural join product
+             where pno <= #{pageNum} * #{amount}
+          )
+          where pno > (#{pageNum}-1) * #{amount}
+     ]]>
+   </select>
+   
+   <!-- 상품 상세 정보 조회 -->
+   <select id="getDetail" resultType="com.thehandsome.domain.ProductDetailVO">
+    <![CDATA[
+       select PCODE, PCOLOR, PNAME, PPRICE, PBRAND, PCONTENT, 
+       IMGURL1, IMGURL2, IMGURL3, IMGURL4, IMGURL5, COLORURL, PSIZE 
+       from product natural join productImg where pcode = #{pcode}
+     ]]>
+   </select>
+   
+   <!-- 장바구니에 상품 merge (같은 상품이면 update, 다른 상품이면 insert) -->
+    <update id="insertProduct">    
+      Merge into cart Using dual on (pcode = #{pcode} and id = #{id} and cartsize = #{cartsize} and cartcolor = #{cartcolor})
+      When matched then
+      Update set cartamount = (cartamount + #{cartamount})
+      When not matched then
+      Insert(ID, cartno, pcode, cartsize, cartcolor, cartamount, cartregdate, cartenabled, cartcolorurl)
+      Values(#{id}, seq_cartno.nextval, #{pcode}, #{cartsize}
+      , #{cartcolor}, #{cartamount}, #{cartregdate}, #{cartenabled}, #{cartcolorurl})
+    </update>
+    
+    <!-- 장바구니에 담겨진 상품 정보들 조회 -->
+    <select id="getProduct" resultType="com.thehandsome.domain.ShoppingBagVO">
+    <![CDATA[
+      select c.ID, c.CARTNO, p.PCODE, p.PBRAND, p.PNAME, p.PPRICE, 
+      c.CARTSIZE, c.CARTCOLOR, c.CARTAMOUNT, c.CARTCOLORURL, (p.PPRICE * c.CARTAMOUNT) as SPRICE
+      from cart c, product p, productImg pi
+      where c.pcode = p.pcode and p.pcode = pi.pcode
+     ]]>
+   </select>
+   
+   <!-- 장바구니에 담겨진 상품들의 총 가격 합계 조회 -->
+   <select id="getTotalPrice" resultType="com.thehandsome.domain.ShoppingBagVO">
+    <![CDATA[
+       select ID, sum(PPRICE * CARTAMOUNT) as total 
+       from cart natural join product where ID = #{id} group by ID
+     ]]>
+   </select>
+   
+   <!-- 상품 수량 변경 후 update -->
+   <update id="updateAmount">
+      UPDATE cart SET cartamount = #{cartamount} WHERE cartno = #{cartno}
+   </update>
+   
+   <!-- 상품 삭제 -->
+   <delete id="deleteProduct">
+      delete from cart where cartno = #{cartno}
+   </delete>
+</mapper>
